@@ -12,6 +12,7 @@ struct MeetingTime {
     friday: bool,
     saturday: bool,
     sunday: bool,
+    campus: Option<String>,
     #[serde(rename = "endTime")]
     end_time: Option<String>,
     #[serde(rename = "beginTime")]
@@ -122,11 +123,12 @@ impl fmt::Display for Section {
         }
         write!(
             f,
-            "{} ({} {}): {}\n{}",
+            "{} ({} {}): {} | {} Credits\n{}",
             self.course_title,
             self.subject_course,
             self.sequence_number,
             days.join(", "),
+            self.credits,
             day_lines.join("\n")
         )
     }
@@ -208,5 +210,44 @@ impl<'a> SectionCollection<'a> {
     pub fn whitelist_credits(&mut self, possible_credits: Vec<u8>) {
         self.running_sections
             .retain(|s| possible_credits.contains(&s.credits))
+    }
+
+    pub fn while_list_meeting_campus(&mut self, campus: &str) {
+        self.running_sections.retain(|s| {
+            s.meeting_faculty
+                .iter()
+                .all(|m| m.meeting_time.campus == Some(campus.to_string()))
+        })
+    }
+
+    pub fn whitelist_subject_courses(&mut self, subject_courses: Vec<&str>) {
+        self.running_sections
+            .retain(|s| subject_courses.contains(&&s.subject_course.as_str()))
+    }
+
+    pub fn rough_time_sort(&mut self) {
+        self.running_sections.sort_by(|s1, s2| {
+            s1.meeting_faculty
+                .first()
+                .unwrap()
+                .meeting_time
+                .start_time
+                .cmp(&s2.meeting_faculty.first().unwrap().meeting_time.start_time)
+        })
+    }
+
+    pub fn rough_whitelist_start_time(&mut self, start_time: &str) {
+        self.running_sections.retain(|s| {
+            if let Some(fac) = s.meeting_faculty.first() {
+                if let Some(start) = &fac.meeting_time.start_time {
+                    println!("{}", start);
+                    return start == start_time;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        })
     }
 }
