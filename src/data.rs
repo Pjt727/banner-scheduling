@@ -1,5 +1,5 @@
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
-use serde::Deserialize;
+use serde::{de, Deserialize, Deserializer};
 use std::cmp::max;
 use std::fmt;
 
@@ -13,10 +13,28 @@ struct MeetingTime {
     saturday: bool,
     sunday: bool,
     campus: Option<String>,
-    #[serde(rename = "endTime")]
-    end_time: Option<String>,
-    #[serde(rename = "beginTime")]
-    start_time: Option<String>,
+    #[serde(rename = "endTime", deserialize_with = "from_string_time")]
+    end_time: Option<u16>,
+    #[serde(rename = "beginTime", deserialize_with = "from_string_time")]
+    start_time: Option<u16>,
+}
+
+fn from_string_time<'de, D>(deserializer: D) -> Result<Option<u16>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let maybe_s: Option<String> = Deserialize::deserialize(deserializer)?;
+    let s = match maybe_s {
+        Some(s) => s,
+        None => return Ok(None),
+    };
+    let hours: u16 = s[..2]
+        .parse()
+        .map_err(|_| de::Error::custom("Could not parse hours"))?;
+    let minutes: u16 = s[2..4]
+        .parse()
+        .map_err(|_| de::Error::custom("Could not parse minutes"))?;
+    return Ok(Some(hours * 60 + minutes));
 }
 
 #[derive(Deserialize, Debug)]
@@ -36,7 +54,7 @@ pub struct Section {
     #[serde(rename = "sequenceNumber")]
     sequence_number: String,
     #[serde(rename = "courseTitle")]
-    course_title: String,
+    pub course_title: String,
     #[serde(rename = "seatsAvailable")]
     seats_available: i16,
     #[serde(rename = "openSection")]
@@ -57,6 +75,17 @@ pub struct DaysChecked {
     pub friday: bool,
     pub saturday: bool,
     pub sunday: bool,
+}
+impl PartialEq for DaysChecked {
+    fn eq(&self, other: &Self) -> bool {
+        self.monday == other.monday
+            && self.tuesday == other.tuesday
+            && self.wednesday == other.wednesday
+            && self.thursday == other.thursday
+            && self.friday == other.friday
+            && self.saturday == other.saturday
+            && self.sunday == other.sunday
+    }
 }
 
 impl Section {
@@ -117,8 +146,8 @@ impl fmt::Display for Section {
                 "{} {}: {} - {}",
                 "-".repeat(4),
                 current_days.join(", "),
-                time.start_time.clone().unwrap_or("None".to_string()),
-                time.end_time.clone().unwrap_or("None".to_string())
+                time.start_time.clone().unwrap_or(0),
+                time.end_time.clone().unwrap_or(0)
             ))
         }
         write!(
@@ -135,40 +164,84 @@ impl fmt::Display for Section {
 }
 
 // a destructive collection of section pointers
-pub struct SectionCollection<'a> {
-    // side affects on running_sections are used to
-    //    produce the final result of the search
-    pub running_sections: Vec<&'a Section>,
+pub struct SectionCollection {
+    sections: Vec<Section>,
+    running_section_indexes: Vec<usize>,
     matcher: SkimMatcherV2,
+    last_search_criteria: SearchCriteria,
 }
 
-impl<'a> SectionCollection<'a> {
-    pub fn new(sections: Vec<&'a Section>) -> Self {
-        SectionCollection {
-            running_sections: sections,
-            matcher: SkimMatcherV2::default(),
-        }
+#[derive(Default)]
+pub struct SearchCriteria {
+    pub query: Option<String>,
+    pub whitelisted_days: Option<DaysChecked>,
+    pub whitelisted_credits: Option<Vec<u8>>,
+    pub whitelisted_campuses: Option<Vec<String>>,
+    pub has_days: bool,
+}
+
+impl PartialEq for SearchCriteria {
+    fn eq(&self, other: &Self) -> bool {
+        self.query == other.query
+            && self.whitelisted_days == other.whitelisted_days
+            && self.whitelisted_credits == other.whitelisted_credits
+            && self.whitelisted_campuses == other.whitelisted_campuses
+            && self.has_days == other.has_days
     }
-    pub fn search(
-        &mut self,
-        search_term: Option<&str>,
-        days_white_listed: Option<&DaysChecked>,
-        credits_white_listed: Option<Vec<u8>>,
-    ) {
-        if let Some(days_white_listed) = days_white_listed {
-            self.whitelist_days(days_white_listed);
-        }
-        if let Some(search_term) = search_term {
-            self.query(search_term)
-        }
-        if let Some(credits_white_listed) = credits_white_listed {
-            self.whitelist_credits(credits_white_listed)
+}
+
+impl SectionCollection {
+    pub fn new(sections: Vec<Section>) -> Self {
+        SectionCollection {
+            sections,
+            running_section_indexes: vec![],
+            matcher: SkimMatcherV2::default(),
+            last_search_criteria: SearchCriteria {
+                ..SearchCriteria::default()
+            },
         }
     }
 
-    pub fn query(&mut self, search_term: &str) {
-        let mut section_scores = vec![];
-        for section in self.running_sections.iter() {
+    pub fn search(&mut self, search_criteria: SearchCriteria) {
+        if self.last_search_criteria == search_criteria {
+            return;
+        }
+        self.reset();
+        if let Some(query) = &search_criteria.query {
+            self.query(query);
+        }
+        if let Some(whitelisted_days) = &search_criteria.whitelisted_days {
+            self.whitelist_days(whitelisted_days);
+        }
+        if let Some(whitelisted_credits) = &search_criteria.whitelisted_credits {
+            self.whitelist_credits(whitelisted_credits);
+        }
+        if let Some(whitelisted_campuses) = &search_criteria.whitelisted_campuses {
+            self.whilelist_meeting_campuses(whitelisted_campuses);
+        }
+        if search_criteria.has_days {
+            self.has_days();
+        }
+
+        self.last_search_criteria = search_criteria;
+    }
+
+    // could implement a more sophiscated reset that only resets
+    //   what is needed
+    #[inline]
+    fn reset(&mut self) {
+        self.running_section_indexes = (0..self.sections.len()).collect()
+    }
+
+    pub fn get_running_sections(&self) -> impl Iterator<Item = &Section> {
+        self.running_section_indexes
+            .iter()
+            .map(move |&index| &self.sections[index])
+    }
+
+    fn query(&mut self, search_term: &str) {
+        let get_value = |i: &usize| {
+            let section = &self.sections[*i];
             let mut max_match = self
                 .matcher
                 .fuzzy_match(&section.course_title, search_term)
@@ -191,57 +264,80 @@ impl<'a> SectionCollection<'a> {
                     .fuzzy_match(&section.subject_course, search_term)
                     .unwrap_or(i64::MIN),
             );
-            if max_match != i64::MIN {
-                section_scores.push((section, max_match));
-            }
-        }
-        section_scores.sort_by(|(_, score1), (_, score2)| score2.cmp(score1));
-        self.running_sections = section_scores.into_iter().map(|(sec, _)| *sec).collect()
+            return max_match;
+        };
+        let mut indexes_scores = self
+            .running_section_indexes
+            .iter()
+            .filter_map(|index| {
+                let score = get_value(index);
+                if score == i64::MIN {
+                    None
+                } else {
+                    Some((index, score))
+                }
+            })
+            .collect::<Vec<(&usize, i64)>>();
+        indexes_scores.sort_by(|(_, score1), (_, score2)| score1.cmp(score2));
+        self.running_section_indexes = indexes_scores.into_iter().map(|(sec, _)| *sec).collect()
     }
 
-    pub fn whitelist_days(&mut self, days: &DaysChecked) {
-        self.running_sections.retain(|s| s.in_days(days))
+    fn whitelist_days(&mut self, days: &DaysChecked) {
+        self.running_section_indexes
+            .retain(|i| self.sections[*i].in_days(days))
     }
 
-    pub fn has_days(&mut self) {
-        self.running_sections.retain(|s| s.has_set_days())
+    fn has_days(&mut self) {
+        self.running_section_indexes
+            .retain(|i| self.sections[*i].has_set_days())
     }
 
-    pub fn whitelist_credits(&mut self, possible_credits: Vec<u8>) {
-        self.running_sections
-            .retain(|s| possible_credits.contains(&s.credits))
+    fn whitelist_credits(&mut self, possible_credits: &Vec<u8>) {
+        self.running_section_indexes
+            .retain(|i| possible_credits.contains(&self.sections[*i].credits))
     }
 
-    pub fn while_list_meeting_campus(&mut self, campus: &str) {
-        self.running_sections.retain(|s| {
-            s.meeting_faculty
-                .iter()
-                .all(|m| m.meeting_time.campus == Some(campus.to_string()))
+    fn whilelist_meeting_campuses(&mut self, campuses: &Vec<String>) {
+        self.running_section_indexes.retain(|i| {
+            self.sections[*i].meeting_faculty.iter().all(|m| {
+                if let Some(campus) = &m.meeting_time.campus {
+                    campuses.contains(campus)
+                } else {
+                    true
+                }
+            })
         })
     }
 
-    pub fn whitelist_subject_courses(&mut self, subject_courses: Vec<&str>) {
-        self.running_sections
-            .retain(|s| subject_courses.contains(&&s.subject_course.as_str()))
+    fn whitelist_subject_courses(&mut self, subject_courses: &Vec<&str>) {
+        self.running_section_indexes
+            .retain(|i| subject_courses.contains(&&self.sections[*i].subject_course.as_str()))
     }
 
-    pub fn rough_time_sort(&mut self) {
-        self.running_sections.sort_by(|s1, s2| {
-            s1.meeting_faculty
+    fn rough_time_sort(&mut self) {
+        self.running_section_indexes.sort_by(|i1, i2| {
+            self.sections[*i1]
+                .meeting_faculty
                 .first()
                 .unwrap()
                 .meeting_time
                 .start_time
-                .cmp(&s2.meeting_faculty.first().unwrap().meeting_time.start_time)
+                .cmp(
+                    &self.sections[*i2]
+                        .meeting_faculty
+                        .first()
+                        .unwrap()
+                        .meeting_time
+                        .start_time,
+                )
         })
     }
 
-    pub fn rough_whitelist_start_time(&mut self, start_time: &str) {
-        self.running_sections.retain(|s| {
-            if let Some(fac) = s.meeting_faculty.first() {
+    fn rough_whitelist_start_time(&mut self, start_time: u16) {
+        self.running_section_indexes.retain(|i| {
+            if let Some(fac) = self.sections[*i].meeting_faculty.first() {
                 if let Some(start) = &fac.meeting_time.start_time {
-                    println!("{}", start);
-                    return start == start_time;
+                    return *start == start_time;
                 } else {
                     return false;
                 }
@@ -249,5 +345,11 @@ impl<'a> SectionCollection<'a> {
                 return false;
             }
         })
+    }
+}
+
+impl Default for SectionCollection {
+    fn default() -> Self {
+        return SectionCollection::new(vec![]);
     }
 }

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+eframe = "0.29.1"
 egui = "0.29.1"
 fuzzy-matcher = "0.3.7"
 serde = { version = "1.0.210", features = ["derive"] }
