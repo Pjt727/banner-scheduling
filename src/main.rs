@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+mod banner;
 mod data;
 mod ui;
 
