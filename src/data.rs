@@ -1,9 +1,40 @@
+use chrono::{DateTime, Utc};
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use std::cmp::max;
 use std::fmt;
 
-trait SectionLike {
-    fn get_sequence_number(&self) -> String {}
+enum Season {
+    Spring,
+    Fall,
+    Winter,
+    Summer,
+}
+
+struct Term {
+    season: Season,
+    year: u16,
+}
+
+struct FacultyMember {
+    name: String,
+    email_address: Option<String>,
+    first_name: Option<String>,
+    last_name: Option<String>,
+    is_primary: Option<bool>,
+}
+
+struct MeetingTime {
+    days_checked: DaysChecked,
+    start_date: DateTime<Utc>,
+    end_date: DateTime<Utc>,
+    start_minutes: Option<u16>,
+    end_minutes: Option<u16>,
+    meeting_type: Option<String>,
+}
+
+struct Section {
+    credit_hours: u8,
+    faculty: Vec<FacultyMember>,
 }
 
 pub struct DaysChecked {
