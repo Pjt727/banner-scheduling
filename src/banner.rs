@@ -1,3 +1,4 @@
+use crate::data;
 use serde::{de, Deserialize, Deserializer};
 
 #[derive(Deserialize, Debug)]
@@ -53,7 +54,11 @@ pub struct Section {
     #[serde(rename = "courseTitle")]
     course_title: String,
     #[serde(rename = "seatsAvailable")]
-    seats_available: i16,
+    seats_available: u16,
+    #[serde(rename = "maximumEnrollment")]
+    maximum_enrollment: u16,
+    #[serde(rename = "instructionalMethod")]
+    instructional_method: String,
     #[serde(rename = "openSection")]
     open_section: bool,
     #[serde(rename = "meetingsFaculty")]
@@ -62,4 +67,20 @@ pub struct Section {
     credits: u8,
     #[serde(rename = "subjectCourse")]
     subject_course: String,
+    #[serde(rename = "campusDescription")]
+    campus_description: String,
+}
+
+impl Into<data::Section> for Section {
+    fn into(self) -> data::Section {
+        data::Section {
+            max_enrollement: Some(self.maximum_enrollment),
+            instruction_method: Some(self.instructional_method),
+            campus: Some(self.campus_description),
+            enrollement: Some(self.maximum_enrollment),
+            faculty: (),
+            meeting_times: (),
+            course_id: (),
+        }
+    }
 }

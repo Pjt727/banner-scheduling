@@ -6,24 +6,24 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-enum Season {
+pub enum Season {
     Spring,
     Fall,
     Winter,
     Summer,
 }
 
-struct Term {
-    season: Season,
-    year: u16,
+pub struct Term {
+    pub season: Season,
+    pub year: u16,
 }
 
-struct FacultyMember {
-    name: String,
-    email_address: Option<String>,
-    first_name: Option<String>,
-    last_name: Option<String>,
-    is_primary: Option<bool>,
+pub struct FacultyMember {
+    pub name: String,
+    pub email_address: Option<String>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub is_primary: Option<bool>,
 }
 
 struct MeetingTime {
@@ -35,24 +35,25 @@ struct MeetingTime {
     meeting_type: Option<String>,
 }
 
-struct Section {
-    max_enrollement: Option<u16>,
-    instruction_method: Option<String>,
-    campus: Option<String>,
-    enrollement: Option<u16>,
-    faculty: Vec<Rc<FacultyMember>>,
-    meeting_times: Vec<MeetingTime>,
-    course: Rc<Course>,
+pub struct Section {
+    pub max_enrollement: Option<u16>,
+    pub instruction_method: Option<String>,
+    pub campus: Option<String>,
+    pub enrollement: Option<u16>,
+    pub faculty_ids: Vec<String>,
+    pub meeting_times: Vec<MeetingTime>,
+    pub course_id: String,
 }
 
-struct Course {
-    subject_code: Option<String>,
-    number: Option<String>,
-    subject_description: Option<String>,
-    title: String,
-    description: Option<String>,
-    credit_hours: u8,
-    sections: Vec<Rc<Section>>,
+pub struct Course {
+    pub id: String,
+    pub title: String,
+    pub credit_hours: u8,
+    pub subject_code: Option<String>,
+    pub number: Option<String>,
+    pub subject_description: Option<String>,
+    pub description: Option<String>,
+    pub sections: Vec<String>,
 }
 
 #[derive(Eq, PartialEq)]
@@ -65,6 +66,7 @@ pub struct DaysChecked {
     pub saturday: bool,
     pub sunday: bool,
 }
+
 impl DaysChecked {
     fn has_set_days(&self) -> bool {
         self.monday
