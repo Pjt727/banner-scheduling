@@ -1,7 +1,10 @@
 use chrono::{DateTime, Utc};
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use std::cmp::max;
+use std::collections::HashMap;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 
 enum Season {
     Spring,
@@ -33,10 +36,26 @@ struct MeetingTime {
 }
 
 struct Section {
-    credit_hours: u8,
-    faculty: Vec<FacultyMember>,
+    max_enrollement: Option<u16>,
+    instruction_method: Option<String>,
+    campus: Option<String>,
+    enrollement: Option<u16>,
+    faculty: Vec<Rc<FacultyMember>>,
+    meeting_times: Vec<MeetingTime>,
+    course: Rc<Course>,
 }
 
+struct Course {
+    subject_code: Option<String>,
+    number: Option<String>,
+    subject_description: Option<String>,
+    title: String,
+    description: Option<String>,
+    credit_hours: u8,
+    sections: Vec<Rc<Section>>,
+}
+
+#[derive(Eq, PartialEq)]
 pub struct DaysChecked {
     pub monday: bool,
     pub tuesday: bool,
@@ -46,102 +65,35 @@ pub struct DaysChecked {
     pub saturday: bool,
     pub sunday: bool,
 }
-impl PartialEq for DaysChecked {
-    fn eq(&self, other: &Self) -> bool {
-        self.monday == other.monday
-            && self.tuesday == other.tuesday
-            && self.wednesday == other.wednesday
-            && self.thursday == other.thursday
-            && self.friday == other.friday
-            && self.saturday == other.saturday
-            && self.sunday == other.sunday
-    }
-}
-
-impl Section {
-    fn in_days(&self, days: &DaysChecked) -> bool {
-        // x -> y (implies) <==> !x || y
-        // if there's a meeting time of that day it must be checked
-        self.meeting_faculty.iter().all(|fac| {
-            (!fac.meeting_time.monday || days.monday)
-                && (!fac.meeting_time.tuesday || days.tuesday)
-                && (!fac.meeting_time.wednesday || days.wednesday)
-                && (!fac.meeting_time.thursday || days.thursday)
-                && (!fac.meeting_time.friday || days.friday)
-                && (!fac.meeting_time.saturday || days.saturday)
-                && (!fac.meeting_time.sunday || days.sunday)
-        })
-    }
-
+impl DaysChecked {
     fn has_set_days(&self) -> bool {
-        self.meeting_faculty.iter().all(|fac| {
-            (fac.meeting_time.monday)
-                || (fac.meeting_time.tuesday)
-                || (fac.meeting_time.wednesday)
-                || (fac.meeting_time.thursday)
-                || (fac.meeting_time.friday)
-                || (fac.meeting_time.saturday)
-                || (fac.meeting_time.sunday)
-        })
+        self.monday
+            || self.tuesday
+            || self.wednesday
+            || self.thursday
+            || self.friday
+            || self.saturday
+            || self.sunday
     }
 }
+
 impl fmt::Display for Section {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut days: Vec<String> = vec![];
-        let mut day_lines: Vec<String> = vec![];
-        for meeting_faculty in &self.meeting_faculty {
-            let time = &meeting_faculty.meeting_time;
-            let mut current_days: Vec<String> = vec![];
-            if time.monday {
-                days.push("MO".to_string());
-                current_days.push("MO".to_string());
-            }
-            if time.tuesday {
-                days.push("TU".to_string());
-                current_days.push("TU".to_string());
-            }
-            if time.wednesday {
-                days.push("WE".to_string());
-                current_days.push("WE".to_string());
-            }
-            if time.thursday {
-                days.push("TH".to_string());
-                current_days.push("TH".to_string());
-            }
-            if time.friday {
-                days.push("FR".to_string());
-                current_days.push("FR".to_string());
-            }
-            day_lines.push(format!(
-                "{} {}: {} - {}",
-                "-".repeat(4),
-                current_days.join(", "),
-                time.start_time.clone().unwrap_or(0),
-                time.end_time.clone().unwrap_or(0)
-            ))
-        }
-        write!(
-            f,
-            "{} ({} {}): {} | {} Credits\n{}",
-            self.course_title,
-            self.subject_course,
-            self.sequence_number,
-            days.join(", "),
-            self.credits,
-            day_lines.join("\n")
-        )
+        todo!();
     }
 }
 
 // a destructive collection of section pointers
-pub struct SectionCollection {
+pub struct TermCollection {
     sections: Vec<Section>,
-    running_section_indexes: Vec<usize>,
+    courses: Vec<Course>,
+    faculty: Vec<FacultyMember>,
+    running_courses: Vec<Rc<Course>>,
     matcher: SkimMatcherV2,
     last_search_criteria: SearchCriteria,
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq, Eq)]
 pub struct SearchCriteria {
     pub query: Option<String>,
     pub whitelisted_days: Option<DaysChecked>,
@@ -150,25 +102,15 @@ pub struct SearchCriteria {
     pub has_days: bool,
 }
 
-impl PartialEq for SearchCriteria {
-    fn eq(&self, other: &Self) -> bool {
-        self.query == other.query
-            && self.whitelisted_days == other.whitelisted_days
-            && self.whitelisted_credits == other.whitelisted_credits
-            && self.whitelisted_campuses == other.whitelisted_campuses
-            && self.has_days == other.has_days
-    }
-}
-
-impl SectionCollection {
-    pub fn new(sections: Vec<Section>) -> Self {
-        SectionCollection {
+impl TermCollection {
+    pub fn new(sections: Vec<Section>, courses: Vec<Course>, faculty: Vec<FacultyMember>) -> Self {
+        TermCollection {
             sections,
-            running_section_indexes: vec![],
+            faculty,
+            running_courses: courses.iter().map(|course| Rc::clone(&course)).collect(),
+            courses,
             matcher: SkimMatcherV2::default(),
-            last_search_criteria: SearchCriteria {
-                ..SearchCriteria::default()
-            },
+            last_search_criteria: SearchCriteria::default(),
         }
     }
 
@@ -200,7 +142,7 @@ impl SectionCollection {
     //   what is needed
     #[inline]
     fn reset(&mut self) {
-        self.running_section_indexes = (0..self.sections.len()).collect()
+        self.running_courses = self.courses.iter().map(|s| Rc::new(*s)).collect()
     }
 
     pub fn get_running_sections(&self) -> impl Iterator<Item = &Section> {
@@ -318,8 +260,8 @@ impl SectionCollection {
     }
 }
 
-impl Default for SectionCollection {
+impl Default for TermCollection {
     fn default() -> Self {
-        return SectionCollection::new(vec![]);
+        return TermCollection::new(vec![]);
     }
 }

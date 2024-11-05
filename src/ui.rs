@@ -1,4 +1,4 @@
-use crate::data::{SearchCriteria, Section, SectionCollection};
+use crate::data::{SearchCriteria, Section, TermCollection};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
@@ -6,7 +6,7 @@ use std::path::PathBuf;
 #[derive(Default)]
 pub struct Scheduler {
     query: String,
-    section_collection: SectionCollection,
+    section_collection: TermCollection,
 }
 
 impl Scheduler {
@@ -20,7 +20,7 @@ impl Scheduler {
         let reader = BufReader::new(file);
         let sections: Vec<Section> = serde_json::from_reader(reader).unwrap();
         Scheduler {
-            section_collection: SectionCollection::new(sections),
+            section_collection: TermCollection::new(sections),
             ..Self::default()
         }
     }
