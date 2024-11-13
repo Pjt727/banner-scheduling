@@ -6,22 +6,21 @@ DROP TABLE IF EXISTS SectionFacultyGroupers;
 DROP TABLE IF EXISTS Courses;
 
 CREATE TABLE Terms (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     season TEXT CHECK (season IN ('Spring', 'Fall', 'Winter', 'Summer')),
     year INTEGER NOT NULL
 );
 
 CREATE TABLE FacultyMembers (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     email_address TEXT,
     first_name TEXT,
     last_name TEXT,
-    is_primary INTEGER NOT NULL
 );
 
 CREATE TABLE MeetingTimes (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     start_date TEXT,
     end_date TEXT,
     meeting_type TEXT,
@@ -34,23 +33,24 @@ CREATE TABLE MeetingTimes (
     is_friday INTEGER NOT NULL,
     is_saturday INTEGER NOT NULL,
     is_sunday INTEGER NOT NULL,
-    section_id INTEGER,
+    section_id TEXT,
     FOREIGN KEY (section_id) REFERENCES Section(id)
 );
 
 
 CREATE TABLE Sections (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     max_enrollment INTEGER,
     instruction_method TEXT,
     campus TEXT,
     enrollment INTEGER,
-    course_id INTEGER,
+    course_id TEXT,
+    primary_faculty_id TEXT,
     FOREIGN KEY (course_id) REFERENCES Course(id)
 );
 
 CREATE TABLE SectionFacultyGroupers (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     section_id INTEGER,
     faculty_id INTEGER,
     FOREIGN KEY (section_id) REFERENCES Course(id),
@@ -59,7 +59,7 @@ CREATE TABLE SectionFacultyGroupers (
 
 
 CREATE TABLE Courses (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     subject_code TEXT,
     number TEXT,
     subject_description TEXT,

@@ -15,12 +15,8 @@ impl Scheduler {
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
-        let file_path = PathBuf::from("japan").join("test.json");
-        let file = File::open(file_path).expect("File did not open");
-        let reader = BufReader::new(file);
-        let sections: Vec<Section> = serde_json::from_reader(reader).unwrap();
         Scheduler {
-            section_collection: TermCollection::new(sections),
+            section_collection: TermCollection::new(),
             ..Self::default()
         }
     }
@@ -44,13 +40,13 @@ impl eframe::App for Scheduler {
                 ..SearchCriteria::default()
             };
 
-            self.section_collection.search(criteria);
+            // self.section_collection.search(criteria);
 
-            for section in self.section_collection.get_running_sections() {
-                ui.horizontal(|ui| {
-                    ui.label(&section.to_string());
-                });
-            }
+            // for section in self.section_collection.get_running_sections() {
+            //     ui.horizontal(|ui| {
+            //         ui.label(&section.to_string());
+            //     });
+            // }
         });
     }
 }

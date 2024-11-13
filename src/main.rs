@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+mod dotenv;
+use dotenv::dotenv;
 mod banner;
 mod data;
 mod ui;
