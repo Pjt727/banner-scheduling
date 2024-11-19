@@ -29,21 +29,21 @@ pub struct FacultyMember {
 
 pub struct MeetingTime {
     pub id: String,
-    pub days_checked: DaysChecked,
     pub start_date: Option<DateTime<Utc>>,
     pub end_date: Option<DateTime<Utc>>,
+    pub meeting_type: Option<String>,
     pub start_minutes: Option<u16>,
     pub end_minutes: Option<u16>,
-    pub meeting_type: Option<String>,
+    pub days_checked: DaysChecked,
     pub section_id: String,
 }
 
 pub struct Section {
     pub id: String,
-    pub max_enrollement: Option<u16>,
+    pub max_enrollment: Option<u16>,
     pub instruction_method: Option<String>,
     pub campus: Option<String>,
-    pub enrollement: Option<u16>,
+    pub enrollment: Option<u16>,
     pub course_id: String,
     pub primary_faculty_id: Option<String>,
 }
@@ -68,7 +68,13 @@ pub async fn bulk_insert(
     query!(
         r#"INSERT INTO Sections (id, max_enrollment, instruction_method, campus, enrollment, course_id, primary_faculty_id) 
         VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
-        sections,
+        sections.iter().map(|s| s.id).collect::<Vec<&str>>(),
+        sections.iter().map(|s| s.max_enrollment as i32).collect::<Vec<i32>>(),
+        sections.iter().map(|s| s.instruction_method.clone()).collect::<Vec<String>>(),
+        sections.iter().map(|s| s.campus.clone()).collect::<Vec<String>>(),
+        sections.iter().map(|s| s.enrollment).collect::<Vec<i32>>(),
+        sections.iter().map(|s| s.course_id.clone()).collect::<Vec<String>>(),
+        sections.iter().map(|s| s.primary_faculty_id).collect::<Vec<String>>()
         )
         .execute(pool)
         .await

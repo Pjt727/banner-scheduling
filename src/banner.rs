@@ -147,10 +147,10 @@ fn into_data_section(section: &Section) -> data::Section {
     data::Section {
         id: section.get_section_id(),
         course_id: section.get_course_id(),
-        max_enrollement: Some(section.maximum_enrollment),
+        max_enrollment: Some(section.maximum_enrollment),
         instruction_method: Some(section.instructional_method.clone()),
         campus: Some(section.campus_description.clone()),
-        enrollement: Some(section.maximum_enrollment),
+        enrollment: Some(section.maximum_enrollment),
         primary_faculty_id: section
             .faculty
             .iter()

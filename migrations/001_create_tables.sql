@@ -8,15 +8,16 @@ DROP TABLE IF EXISTS Courses;
 CREATE TABLE Terms (
     id TEXT PRIMARY KEY,
     season TEXT CHECK (season IN ('Spring', 'Fall', 'Winter', 'Summer')),
-    year INTEGER NOT NULL
+    year INTEGER NOT NULL,
+    UNIQUE(season, year)
 );
 
 CREATE TABLE FacultyMembers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    email_address TEXT,
+    email_address TEXT UNQIUE,
     first_name TEXT,
-    last_name TEXT,
+    last_name TEXT
 );
 
 CREATE TABLE MeetingTimes (
@@ -46,15 +47,7 @@ CREATE TABLE Sections (
     enrollment INTEGER,
     course_id TEXT,
     primary_faculty_id TEXT,
-    FOREIGN KEY (course_id) REFERENCES Course(id)
-);
-
-CREATE TABLE SectionFacultyGroupers (
-    id TEXT PRIMARY KEY,
-    section_id INTEGER,
-    faculty_id INTEGER,
-    FOREIGN KEY (section_id) REFERENCES Course(id),
-    FOREIGN KEY (faculty_id) REFERENCES FacultyMember(id)
+    FOREIGN KEY (course_id) REFERENCES Courses(id)
 );
 
 
