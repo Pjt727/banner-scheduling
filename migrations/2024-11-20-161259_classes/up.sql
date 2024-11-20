@@ -38,7 +38,7 @@ CREATE TABLE Sections (
     instruction_method TEXT,
     campus TEXT,
     enrollment INTEGER,
-    course_id TEXT,
+    course_id TEXT NOT NULL,
     primary_faculty_id TEXT,
     FOREIGN KEY (course_id) REFERENCES Courses(id)
 );

@@ -7,57 +7,6 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-pub enum Season {
-    Spring,
-    Fall,
-    Winter,
-    Summer,
-}
-
-pub struct Term {
-    pub season: Season,
-    pub year: u16,
-}
-
-pub struct FacultyMember {
-    pub id: String,
-    pub name: String,
-    pub email_address: Option<String>,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-}
-
-pub struct MeetingTime {
-    pub id: String,
-    pub start_date: Option<DateTime<Utc>>,
-    pub end_date: Option<DateTime<Utc>>,
-    pub meeting_type: Option<String>,
-    pub start_minutes: Option<u16>,
-    pub end_minutes: Option<u16>,
-    pub days_checked: DaysChecked,
-    pub section_id: String,
-}
-
-pub struct Section {
-    pub id: String,
-    pub max_enrollment: Option<u16>,
-    pub instruction_method: Option<String>,
-    pub campus: Option<String>,
-    pub enrollment: Option<u16>,
-    pub course_id: String,
-    pub primary_faculty_id: Option<String>,
-}
-
-pub struct Course {
-    pub id: String,
-    pub title: String,
-    pub credit_hours: u8,
-    pub subject_code: Option<String>,
-    pub number: Option<String>,
-    pub subject_description: Option<String>,
-    pub description: Option<String>,
-}
-
 pub async fn bulk_insert(
     pool: &SqlitePool,
     courses: Vec<Course>,
@@ -88,12 +37,6 @@ impl DaysChecked {
             || self.friday
             || self.saturday
             || self.sunday
-    }
-}
-
-impl fmt::Display for Section {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        todo!();
     }
 }
 
