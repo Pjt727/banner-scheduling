@@ -1,10 +1,3 @@
-DROP TABLE IF EXISTS Terms;
-DROP TABLE IF EXISTS FacultyMembers;
-DROP TABLE IF EXISTS MeetingTimes;
-DROP TABLE IF EXISTS Sections;
-DROP TABLE IF EXISTS SectionFacultyGroupers;
-DROP TABLE IF EXISTS Courses;
-
 CREATE TABLE Terms (
     id TEXT PRIMARY KEY,
     season TEXT CHECK (season IN ('Spring', 'Fall', 'Winter', 'Summer')),
