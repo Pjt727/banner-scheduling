@@ -65,20 +65,7 @@ pub async fn bulk_insert(
     meeting_times: Vec<MeetingTime>,
     faculty_members: Vec<FacultyMember>,
 ) {
-    query!(
-        r#"INSERT INTO Sections (id, max_enrollment, instruction_method, campus, enrollment, course_id, primary_faculty_id) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
-        sections.iter().map(|s| s.id).collect::<Vec<&str>>(),
-        sections.iter().map(|s| s.max_enrollment as i32).collect::<Vec<i32>>(),
-        sections.iter().map(|s| s.instruction_method.clone()).collect::<Vec<String>>(),
-        sections.iter().map(|s| s.campus.clone()).collect::<Vec<String>>(),
-        sections.iter().map(|s| s.enrollment).collect::<Vec<i32>>(),
-        sections.iter().map(|s| s.course_id.clone()).collect::<Vec<String>>(),
-        sections.iter().map(|s| s.primary_faculty_id).collect::<Vec<String>>()
-        )
-        .execute(pool)
-        .await
-        .unwrap();
+    todo!()
 }
 
 #[derive(Eq, PartialEq)]
