@@ -1,45 +1,10 @@
 use diesel;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, FromSqlRow, AsExpression)]
-#[sql_type = "Text"]
-pub enum Season {
-    Spring,
-    Fall,
-    Winter,
-    Summer,
-}
-
-impl<DB: Backend> ToSql<Text, DB> for Season {
-    fn to_sql<W: Output<DB>>(&self, out: &mut W) -> DieselResult {
-        match *self {
-            Season::Spring => out.write_all(b"Spring")?,
-            Season::Fall => out.write_all(b"Fall")?,
-            Season::Winter => out.write_all(b"Winter")?,
-            Season::Summer => out.write_all(b"Summer")?,
-        }
-        Ok(IsNull::No)
-    }
-}
-
-impl<DB: Backend> FromSql<Text, DB> for Season {
-    fn from_sql(bytes: Option<&DB::RawValue>) -> DieselResult<Self> {
-        match not_none!(bytes).as_ref() {
-            b"Spring" => Ok(Season::Spring),
-            b"Fall" => Ok(Season::Fall),
-            b"Winter" => Ok(Season::Winter),
-            b"Summer" => Ok(Season::Summer),
-            _ => Err("Invalid season value".into()),
-        }
-    }
-}
-
 diesel::table! {
-    use super::Season;
-    use diesel::types::*;
     terms {
         id -> Text,
-        /// Unqiue with year
-        season -> Season,
+        /// Unqiue with year, is an enum (could possibly change)
+        season -> Text,
         /// Unqiue with season
         year -> Integer,
     }
@@ -58,8 +23,8 @@ diesel::table! {
 diesel::table! {
     meeting_times {
         id -> Text,
-        start_date -> Nullable<Text>,
-        end_date -> Nullable<Text>,
+        start_date -> Nullable<TimestamptzSqlite>,
+        end_date -> Nullable<TimestamptzSqlite>,
         meeting_type -> Nullable<Text>,
         start_minutes -> Nullable<Integer>,
         end_minutes -> Nullable<Integer>,
@@ -94,6 +59,6 @@ diesel::table! {
         subject_description -> Nullable<Text>,
         title -> Nullable<Text>,
         description -> Nullable<Text>,
-        credit_hours -> Nullable<Integer>,
+        credit_hours -> Integer,
     }
 }

@@ -1,8 +1,5 @@
-use crate::data;
+use crate::{banner::scraper::get_reader, db::models};
 use serde::{de, Deserialize, Deserializer};
-use std::fs::File;
-use std::io::BufReader;
-use std::path::PathBuf;
 
 #[derive(Deserialize, Debug)]
 struct MeetingTime {
@@ -21,6 +18,7 @@ struct MeetingTime {
     #[serde(rename = "meetingType")]
     meeting_type: String,
 }
+
 impl MeetingTime {
     fn get_unique_string(&self) -> String {
         let mut unique_string = String::new();
@@ -143,14 +141,14 @@ impl Section {
     }
 }
 
-fn into_data_section(section: &Section) -> data::Section {
-    data::Section {
+fn into_model_section(section: &Section) -> models::Section {
+    models::Section {
         id: section.get_section_id(),
         course_id: section.get_course_id(),
-        max_enrollment: Some(section.maximum_enrollment),
+        max_enrollment: Some(section.maximum_enrollment.into()),
         instruction_method: Some(section.instructional_method.clone()),
         campus: Some(section.campus_description.clone()),
-        enrollment: Some(section.maximum_enrollment),
+        enrollment: Some(section.maximum_enrollment.into()),
         primary_faculty_id: section
             .faculty
             .iter()
@@ -160,11 +158,11 @@ fn into_data_section(section: &Section) -> data::Section {
     }
 }
 
-fn into_data_course(section: &Section) -> data::Course {
-    data::Course {
+fn into_model_course(section: &Section) -> models::Course {
+    models::Course {
         id: section.get_course_id(),
-        title: section.course_title.clone(),
-        credit_hours: section.credits.clone(),
+        title: Some(section.course_title.clone()),
+        credit_hours: section.credits.into(),
         subject_code: Some(section.subject.clone()),
         number: Some(section.course_number.clone()),
         subject_description: Some(section.subject_description.clone()),
@@ -172,41 +170,38 @@ fn into_data_course(section: &Section) -> data::Course {
     }
 }
 
-fn into_faculty(section: &Section) -> Vec<data::FacultyMember> {
+fn into_faculty(section: &Section) -> Vec<models::FacultyMember> {
     section
         .faculty
         .iter()
-        .map(|s| data::FacultyMember {
+        .map(|s| models::FacultyMember {
             id: s.email_address.clone(),
-            name: s.display_name.clone(),
-            email_address: Some(s.email_address.clone()),
+            email: Some(s.email_address.clone()),
             first_name: s.display_name.split(' ').next().map(|f| f.to_string()),
             last_name: s.display_name.split(' ').last().map(|f| f.to_string()),
         })
         .collect()
 }
 
-fn into_meeting_times(section: &Section) -> Vec<data::MeetingTime> {
+fn into_meeting_times(section: &Section) -> Vec<models::MeetingTime> {
     section
         .meeting_faculty
         .iter()
         .map(|m_f| {
             let time = &m_f.meeting_time;
-            data::MeetingTime {
+            models::MeetingTime {
                 id: format!("{},{}", section.get_section_id(), time.get_unique_string()),
-                days_checked: data::DaysChecked {
-                    monday: time.monday,
-                    tuesday: time.tuesday,
-                    wednesday: time.wednesday,
-                    thursday: time.thursday,
-                    friday: time.friday,
-                    saturday: time.saturday,
-                    sunday: time.sunday,
-                },
+                is_monday: time.monday,
+                is_tuesday: time.tuesday,
+                is_wednesday: time.wednesday,
+                is_thursday: time.thursday,
+                is_friday: time.friday,
+                is_saturday: time.saturday,
+                is_sunday: time.sunday,
                 start_date: None,
                 end_date: None,
-                start_minutes: time.start_time,
-                end_minutes: time.end_time,
+                start_minutes: time.start_time.map(|s| s.into()),
+                end_minutes: time.end_time.map(|e| e.into()),
                 meeting_type: Some(time.meeting_type.clone()),
                 section_id: section.get_section_id(),
             }
@@ -214,21 +209,20 @@ fn into_meeting_times(section: &Section) -> Vec<data::MeetingTime> {
         .collect()
 }
 
-fn adapt_banner() -> (
-    Vec<data::Course>,
-    Vec<data::Section>,
-    Vec<data::MeetingTime>,
-    Vec<data::FacultyMember>,
-) {
-    let file_path = PathBuf::from("japan").join("test.json");
-    let file = File::open(file_path).expect("File did not open");
-    let reader = BufReader::new(file);
-    let sections: Vec<Section> = serde_json::from_reader(reader).unwrap();
+fn adapt_banner() {
+    let reader = get_reader();
+    let scraped_sections: Vec<Section> = serde_json::from_reader(reader).unwrap();
 
-    (
-        sections.iter().map(into_data_course).collect(),
-        sections.iter().map(into_data_section).collect(),
-        sections.iter().map(into_meeting_times).flatten().collect(),
-        sections.iter().map(into_faculty).flatten().collect(),
-    )
+    let courses: Vec<models::Course> = scraped_sections.iter().map(into_model_course).collect();
+    let sections: Vec<models::Section> = scraped_sections.iter().map(into_model_section).collect();
+    let meeting_times: Vec<models::MeetingTime> = scraped_sections
+        .iter()
+        .map(into_meeting_times)
+        .flatten()
+        .collect();
+    let faculty: Vec<models::FacultyMember> = scraped_sections
+        .iter()
+        .map(into_faculty)
+        .flatten()
+        .collect();
 }

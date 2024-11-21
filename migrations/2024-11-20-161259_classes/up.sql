@@ -15,8 +15,8 @@ CREATE TABLE FacultyMembers (
 
 CREATE TABLE MeetingTimes (
     id TEXT PRIMARY KEY,
-    start_date TEXT,
-    end_date TEXT,
+    start_date TIMESTAMP,
+    end_date TIMESTAMP,
     meeting_type TEXT,
     start_minutes INTEGER,
     end_minutes INTEGER,
@@ -51,5 +51,5 @@ CREATE TABLE Courses (
     subject_description TEXT,
     title TEXT,
     description TEXT,
-    credit_hours INTEGER
+    credit_hours INTEGER NOT NULL
 );

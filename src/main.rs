@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 mod banner;
 mod data;
+mod db;
 mod ui;
 
 fn main() {
