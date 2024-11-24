@@ -1,4 +1,6 @@
-use crate::{banner::scraper::get_reader, db::models};
+// use crate::{banner::scraper::get_reader, db::models};
+use super::scraper::get_reader;
+use crate::db::models;
 use serde::{de, Deserialize, Deserializer};
 
 #[derive(Deserialize, Debug)]
